@@ -13,6 +13,7 @@ from .database import Database
 from .logger import Logger
 from .models import Coin
 
+import pdb
 
 class BinanceAPIManager:
     def __init__(self, config: Config, db: Database, logger: Logger):
@@ -226,6 +227,9 @@ class BinanceAPIManager:
                 return True
 
             if order_status.side == "BUY":
+                
+                pdb.set_trace()
+
                 current_price = self.get_ticker_price(order_status.symbol)
                 if float(current_price) * (1 - 0.001) > float(order_status.price):
                     return True
@@ -242,6 +246,15 @@ class BinanceAPIManager:
         target_balance: float = None,
         from_coin_price: float = None,
     ):
+        print(f'1BUYQNTY: origin_symbol: {origin_symbol}, target_symbol: {target_symbol}, target_balance: {target_balance}, from_coin_price: {from_coin_price}')
+        print(f'to_Coin: {target_symbol}, target balance: {target_balance}, current_bal: {self.get_currency_balance(target_symbol)}')
+        print(f'from_Coin: {origin_symbol}, from_coin_price: {from_coin_price}, current_bal: {self.get_currency_balance(origin_symbol)}')
+
+        if origin_symbol == "XMR":
+            print("XMR being evaluated-----")
+            pdb.set_trace()
+        
+        #import pdb;pdb.set_trace()
         target_balance = target_balance or self.get_currency_balance(target_symbol)
         from_coin_price = from_coin_price or self.get_ticker_price(origin_symbol + target_symbol)
 
@@ -252,6 +265,7 @@ class BinanceAPIManager:
         """
         Buy altcoin
         """
+        #import pdb;pdb.set_trace()
         trade_log = self.db.start_trade_log(origin_coin, target_coin, False)
         origin_symbol = origin_coin.symbol
         target_symbol = target_coin.symbol
@@ -259,8 +273,10 @@ class BinanceAPIManager:
         with self.cache.open_balances() as balances:
             balances.clear()
 
+        # coin balances
         origin_balance = self.get_currency_balance(origin_symbol)
         target_balance = self.get_currency_balance(target_symbol)
+
         pair_info = self.binance_client.get_symbol_info(origin_symbol + target_symbol)
         from_coin_price = self.get_ticker_price(origin_symbol + target_symbol)
         from_coin_price_s = "{:0.0{}f}".format(from_coin_price, pair_info["quotePrecision"])
