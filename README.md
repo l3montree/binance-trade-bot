@@ -1,5 +1,15 @@
 # binance-trade-bot
 > Automated cryptocurrency trading bot
+----------------------------------------------------------------------------------------------------------------------------------
+## Forked Repo: 
+Working to understand more about making gains off primarily speculations about the cryptocurrency market
+
+### Current work (so far):
+- Patched outdated packages
+- tbc
+----------------------------------------------------------------------------------------------------------------------------------
+
+
 
 ![github](https://img.shields.io/github/workflow/status/edeng23/binance-trade-bot/binance-trade-bot)
 ![docker](https://img.shields.io/docker/pulls/edeng23/binance-trade-bot)
