@@ -1,8 +1,5 @@
 # binance-trade-bot
 > Automated cryptocurrency trading bot
-
-\
-\
 ----------------------------------------------------------------------------------------------------------------------------------
 ## Forked Repo: 
 Working to understand more about making gains off primarily speculations about the cryptocurrency market
@@ -10,12 +7,7 @@ Working to understand more about making gains off primarily speculations about t
 ### Current work (so far):
 - Patched outdated packages
 - tbc
-
-
 ----------------------------------------------------------------------------------------------------------------------------------
-\
-\
-\
 
 
 
