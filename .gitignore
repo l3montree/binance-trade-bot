@@ -8,7 +8,7 @@ user.cfg
 .idea/
 .vscode/
 .replit
-venv/
+#venv/
 crypto_trading.db
 apprise.yml
 .DS_Store
