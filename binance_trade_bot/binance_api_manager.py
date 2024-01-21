@@ -3,7 +3,7 @@ import time
 import traceback
 from typing import Dict, Optional
 
-from binance.client import Client
+from binance import Client
 from binance.exceptions import BinanceAPIException
 from cachetools import TTLCache, cached
 
@@ -13,7 +13,7 @@ from .database import Database
 from .logger import Logger
 from .models import Coin
 
-import pdb
+#import pdb
 
 class BinanceAPIManager:
     def __init__(self, config: Config, db: Database, logger: Logger):
@@ -228,7 +228,7 @@ class BinanceAPIManager:
 
             if order_status.side == "BUY":
                 
-                pdb.set_trace()
+                #pdb.set_trace()
 
                 current_price = self.get_ticker_price(order_status.symbol)
                 if float(current_price) * (1 - 0.001) > float(order_status.price):
@@ -252,7 +252,7 @@ class BinanceAPIManager:
 
         if origin_symbol == "XMR":
             print("XMR being evaluated-----")
-            pdb.set_trace()
+            #pdb.set_trace()
         
         #import pdb;pdb.set_trace()
         target_balance = target_balance or self.get_currency_balance(target_symbol)
