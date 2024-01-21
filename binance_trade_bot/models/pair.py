@@ -19,7 +19,7 @@ class Pair(Base):
     ratio = Column(Float)
 
     enabled = column_property(
-        select([func.count()])
+        select([func.count(Coin.symbol)==2])
         .where(or_(Coin.symbol == from_coin_id, Coin.symbol == to_coin_id))
         .where(Coin.enabled.is_(True))
         .as_scalar()
