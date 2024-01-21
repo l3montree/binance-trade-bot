@@ -22,7 +22,7 @@ class Pair(Base):
         select([func.count(Coin.symbol) == 2])
         .where(or_(Coin.symbol == from_coin_id, Coin.symbol == to_coin_id))
         .where(Coin.enabled.is_(True))
-        .scalar_subquery()
+        .as_scalar()
     )
 
     def __init__(self, from_coin: Coin, to_coin: Coin, ratio=None):
