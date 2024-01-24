@@ -13,8 +13,6 @@ from .database import Database
 from .logger import Logger
 from .models import Coin
 
-#import pdb
-
 class BinanceAPIManager:
     def __init__(self, config: Config, db: Database, logger: Logger):
         # initializing the client class calls `ping` API endpoint, verifying the connection
@@ -245,16 +243,8 @@ class BinanceAPIManager:
         target_symbol: str,
         target_balance: float = None,
         from_coin_price: float = None,
-    ):
-        print(f'1BUYQNTY: origin_symbol: {origin_symbol}, target_symbol: {target_symbol}, target_balance: {target_balance}, from_coin_price: {from_coin_price}')
-        print(f'to_Coin: {target_symbol}, target balance: {target_balance}, current_bal: {self.get_currency_balance(target_symbol)}')
-        print(f'from_Coin: {origin_symbol}, from_coin_price: {from_coin_price}, current_bal: {self.get_currency_balance(origin_symbol)}')
-
-        if origin_symbol == "XMR":
-            print("XMR being evaluated-----")
-            #pdb.set_trace()
+            ):
         
-        #import pdb;pdb.set_trace()
         target_balance = target_balance or self.get_currency_balance(target_symbol)
         from_coin_price = from_coin_price or self.get_ticker_price(origin_symbol + target_symbol)
 

@@ -10,13 +10,14 @@ class Pair(Base):
 
     id = Column(Integer, primary_key=True) #creates a column which has the primary keys --> unique identifier for each row?
 
+    #code below: sets relationships between 2 x (coin and pair) and links each to different ids: to_coin, from_coin
     from_coin_id = Column(String, ForeignKey("coins.symbol")) #creates a column of strings where values in each row relate to values in the "coins.symbol" column
-    from_coin = relationship("Coin", foreign_keys=[from_coin_id], lazy="joined")
+    from_coin = relationship("Coin", foreign_keys=[from_coin_id], lazy="joined") #sets a link between coin and pair
 
     to_coin_id = Column(String, ForeignKey("coins.symbol"))
     to_coin = relationship("Coin", foreign_keys=[to_coin_id], lazy="joined")
 
-    ratio = Column(Float)
+    ratio = Column(Float) #creates a new column linked to ratio
 
     enabled = column_property(
         select([func.count(Coin.symbol)==2])

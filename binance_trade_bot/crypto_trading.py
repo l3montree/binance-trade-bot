@@ -38,6 +38,7 @@ def main():
 
     trader.initialize()
 
+    # runs events periodically
     schedule = SafeScheduler(logger)
     schedule.every(config.SCOUT_SLEEP_TIME).seconds.do(trader.scout).tag("scouting")
     schedule.every(1).minutes.do(trader.update_values).tag("updating value history")

@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python: Debug Directory",
+            "type": "python",
+            "request": "launch",
+            "python": "/home/sailosi/personal_repo/general_/crypto-bot/research2/binance-trade-bot/venv/bin/python3.10",
+            "module": "binance_trade_bot"
+        
+        }
+    ]
+  }
+  
