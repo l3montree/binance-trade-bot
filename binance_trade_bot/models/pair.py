@@ -8,9 +8,9 @@ from .coin import Coin
 class Pair(Base):
     __tablename__ = "pairs"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True) #creates a column which has the primary keys --> unique identifier for each row?
 
-    from_coin_id = Column(String, ForeignKey("coins.symbol"))
+    from_coin_id = Column(String, ForeignKey("coins.symbol")) #creates a column of strings where values in each row relate to values in the "coins.symbol" column
     from_coin = relationship("Coin", foreign_keys=[from_coin_id], lazy="joined")
 
     to_coin_id = Column(String, ForeignKey("coins.symbol"))
