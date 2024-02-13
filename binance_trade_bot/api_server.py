@@ -14,7 +14,8 @@ from .database import Database
 from .logger import Logger
 from .models import Coin, CoinValue, CurrentCoin, Pair, ScoutHistory, Trade
 
-app = Flask(__name__)
+#you are interacting with web API, flask faciliates this 
+app = Flask(__name__) 
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 socketio = SocketIO(app, cors_allowed_origins="*")

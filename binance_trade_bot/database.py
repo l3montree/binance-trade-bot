@@ -7,7 +7,7 @@ from typing import List, Optional, Union
 
 from socketio import Client
 from socketio.exceptions import ConnectionError as SocketIOConnectionError
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, inspect
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
 
 from .config import Config
@@ -22,6 +22,7 @@ class Database:
         self.engine = create_engine(uri)
         self.SessionMaker = sessionmaker(bind=self.engine)
         self.socketio_client = Client()
+        self.iniialised = False
 
     def socketio_connect(self):
         if self.socketio_client.connected and self.socketio_client.namespaces:
@@ -44,11 +45,19 @@ class Database:
         yield session
         session.commit()
         session.close()
+    
+    def get_coin_value(self, symbol:str) -> float:
+        session:Session
+        with self.db_session() as session:
+            coinValueList = session.query(CoinValue.balance).filter(CoinValue.coin_id == symbol).order_by(CoinValue.datetime.desc()).first()
+            return float(coinValueList[0])
 
     def set_coins(self, symbols: List[str]):
+        """
+        given a list of coins, symbols, if Coins.symbol is in list, it is enabled
+        """
         session: Session
 
-        # Add coins to the database and set them as enabled or not
         with self.db_session() as session:
             # For all the coins in the database, if the symbol no longer appears
             # in the config file, set the coin as disabled
@@ -67,6 +76,7 @@ class Database:
                     coin.enabled = True
 
         # For all the combinations of coins in the database, add a pair to the database
+        #   --> creates pairs from the ccins
         with self.db_session() as session:
             coins: List[Coin] = session.query(Coin).filter(Coin.enabled).all()
             for from_coin in coins:
@@ -108,11 +118,17 @@ class Database:
     def get_current_coin(self) -> Optional[Coin]:
         session: Session
         with self.db_session() as session:
+            """
+            gets the first instance/appearance of the current coin
+                --> CurrentCoin init in session?
+            """ 
             current_coin = session.query(CurrentCoin).order_by(CurrentCoin.datetime.desc()).first()
+            #current_coin_balance = session.query(CoinValue.balance).order_by(CoinValue.datetime.desc())[0]
+
             if current_coin is None:
                 return None
             coin = current_coin.coin
-            session.expunge(coin)
+            session.expunge(coin) #removes coin from the session cache, to add = session.add(coin)
             return coin
 
     def get_pair(self, from_coin: Union[Coin, str], to_coin: Union[Coin, str]):
@@ -132,7 +148,7 @@ class Database:
             if only_enabled:
                 pairs = pairs.filter(Pair.enabled.is_(True))
             pairs = pairs.all()
-            session.expunge_all()
+            session.expunge_all() #memory clear, otherwise it will persist and come up in other instances
             return pairs
 
     def get_pairs(self, only_enabled=True) -> List[Pair]:
@@ -212,7 +228,12 @@ class Database:
             # All weekly entries will be kept forever
 
     def create_database(self):
-        Base.metadata.create_all(self.engine)
+        inspector = inspect(self.engine)
+
+        if inspector.get_table_names():
+            #Base.metadata.drop_all(self.engine)
+            pass
+        Base.metadata.create_all(self.engine) #creates all the databases
 
     def start_trade_log(self, from_coin: Coin, to_coin: Coin, selling: bool):
         return TradeLog(self, from_coin, to_coin, selling)

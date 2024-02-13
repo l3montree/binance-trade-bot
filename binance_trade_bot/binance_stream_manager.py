@@ -37,7 +37,7 @@ class BinanceCache:  # pylint: disable=too-few-public-methods
 
     @contextmanager
     def open_balances(self):
-        with self._balances_mutex:
+        with self._balances_mutex: #with* allows self._balances to "acquire" a lock
             yield self._balances
 
 
@@ -80,12 +80,15 @@ class BinanceStreamManager:
             enable_stream_signal_buffer=True,
             exchange=f"binance.{config.BINANCE_TLD}",
         )
+        #CEX?
         self.bw_api_manager.create_stream(
             ["arr"],
             ["!miniTicker"],
             api_key=config.BINANCE_API_KEY,
             api_secret=config.BINANCE_API_SECRET_KEY,
         )
+        #isolated margin
+            #used to determine if there are user inputs still processing server side
         self.bw_api_manager.create_stream(
             ["arr"],
             ["!userData"],
@@ -103,13 +106,15 @@ class BinanceStreamManager:
 
     def _fetch_pending_orders(self):
         pending_orders: Set[Tuple[str, int]]
-        with self.pending_orders_mutex:
+        with self.pending_orders_mutex: #pending orders are locked
             pending_orders = self.pending_orders.copy()
-        for symbol, order_id in pending_orders:
+        
+        #fetch orders?
+        for symbol, order_id in pending_orders: 
             order = None
             while True:
                 try:
-                    order = self.binance_client.get_order(symbol=symbol, orderId=order_id)
+                    order = self.binance_client.get_order(symbol=symbol, orderId=order_id) #gets pending order
                 except (BinanceRequestException, BinanceAPIException) as e:
                     self.logger.error(f"Got exception during fetching pending order: {e}")
                 if order is not None:
@@ -129,11 +134,11 @@ class BinanceStreamManager:
                 f"Pending order {order_id} for symbol {symbol} fetched:\n{fake_report}",
                 False,
             )
-            self.cache.orders[fake_report["order_id"]] = BinanceOrder(fake_report)
+            self.cache.orders[fake_report["order_id"]] = BinanceOrder(fake_report) #stream_data?
 
     def _invalidate_balances(self):
         with self.cache.open_balances() as balances:
-            balances.clear()
+            balances.clear() #removes all data from open_balances
 
     def _stream_processor(self):
         while True:
@@ -143,45 +148,62 @@ class BinanceStreamManager:
             stream_signal = self.bw_api_manager.pop_stream_signal_from_stream_signal_buffer()
             stream_data = self.bw_api_manager.pop_stream_data_from_stream_buffer()
 
-            if stream_signal is not False:
+            if stream_signal is not False: #checks signals server side --> indicates if there are pending orders
                 signal_type = stream_signal["type"]
                 stream_id = stream_signal["stream_id"]
+
                 if signal_type == "CONNECT":
                     stream_info = self.bw_api_manager.get_stream_info(stream_id)
-                    if "!userData" in stream_info["markets"]:
+
+                    if "!userData" in stream_info["markets"]: #still pending orders
                         self.logger.debug("Connect for userdata arrived", False)
-                        self._fetch_pending_orders()
-                        self._invalidate_balances()
-            if stream_data is not False:
-                self._process_stream_data(stream_data)
+                        self._fetch_pending_orders() #stores pending orders in cache
+                        self._invalidate_balances() #clears open_balances
+            if stream_data is not False: 
+                #BREAKS here if stream has data_stream
+                self._process_stream_data(stream_data) 
             if stream_data is False and stream_signal is False:
                 time.sleep(0.01)
 
     def _process_stream_data(self, stream_data):
+        """
+        processes stream_data and updates self.cache
+        """
+
         event_type = stream_data["event_type"]
+        
+        #   executionReport? --> orders executed? orders placed, cancelled, rejected, order filled partial or complete 
+        #       --> determine if orders are actually fulfilled
         if event_type == "executionReport":  # !userData
             self.logger.debug(f"execution report: {stream_data}")
             order = BinanceOrder(stream_data)
-            self.cache.orders[order.id] = order
+            self.cache.orders[order.id] = order 
+
+        #   balanceUpdate --> acount balances on server
+        #       --> deposits, withdrawals,trade,fees deducted
         elif event_type == "balanceUpdate":  # !userData
             self.logger.debug(f"Balance update: {stream_data}")
             with self.cache.open_balances() as balances:
                 asset = stream_data["asset"]
-                if asset in balances:
+                if asset in balances: #if non zero balance --> delete data in open_balances?
                     del balances[stream_data["asset"]]
-        elif event_type in (
-            "outboundAccountPosition",
-            "outboundAccountInfo",
-        ):  # !userData
+        
+        #   "outboundAccountPosition", {"outboundAccountInfo" --> deprecated}
+        #       --> tells you the delta_asset_changes, changes in asset value over time
+        elif event_type in ("outboundAccountPosition","outboundAccountInfo"):  # !userData
             self.logger.debug(f"{event_type}: {stream_data}")
             with self.cache.open_balances() as balances:
-                for bal in stream_data["balances"]:
-                    balances[bal["asset"]] = float(bal["free"])
+                for bal in stream_data["balances"]:   
+                    balances[bal["asset"]] = float(bal["free"]) #stream_data["balances"]["free"]??
+        
+        #   "24hrMiniTicker"
+        #       --> gives you changes in a single asset over a 24hr period: closing/opening price, lowest/highest price 
         elif event_type == "24hrMiniTicker":
             for event in stream_data["data"]:
-                self.cache.ticker_values[event["symbol"]] = float(event["close_price"])
+                self.cache.ticker_values[event["symbol"]] = float(event["close_price"]) #stores all ticker values from api
+        
         else:
             self.logger.error(f"Unknown event type found: {event_type}\n{stream_data}")
 
     def close(self):
-        self.bw_api_manager.stop_manager_with_all_streams()
+        self.bw_api_manager.stop_manager_with_all_streams()#

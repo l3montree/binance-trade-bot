@@ -13,6 +13,9 @@ from .database import Database
 from .logger import Logger
 from .models import Coin
 
+import threading
+import time
+
 class BinanceAPIManager:
     def __init__(self, config: Config, db: Database, logger: Logger):
         # initializing the client class calls `ping` API endpoint, verifying the connection
@@ -25,7 +28,8 @@ class BinanceAPIManager:
         self.logger = logger
         self.config = config
 
-        self.cache = BinanceCache()
+        #initilalise empty variables
+        self.cache = BinanceCache() 
         self.stream_manager: Optional[BinanceStreamManager] = None
         self.setup_websockets()
 
@@ -37,6 +41,7 @@ class BinanceAPIManager:
             self.logger,
         )
 
+    #cached --> max time allowed for cache to exist: 43200s ~ 12hrs
     @cached(cache=TTLCache(maxsize=1, ttl=43200))
     def get_trade_fees(self) -> Dict[str, float]:
         return {ticker["symbol"]: float(ticker["takerCommission"]) for ticker in self.binance_client.get_trade_fee()}
@@ -44,6 +49,7 @@ class BinanceAPIManager:
     @cached(cache=TTLCache(maxsize=1, ttl=60))
     def get_using_bnb_for_fees(self):
         return self.binance_client.get_bnb_burn_spot_margin()["spotBNBBurn"]
+    
 
     def get_fee(self, origin_coin: Coin, target_coin: Coin, selling: bool):
         base_fee = self.get_trade_fees()[origin_coin + target_coin]
@@ -82,8 +88,8 @@ class BinanceAPIManager:
         """
         Get ticker price of a specific coin
         """
-        price = self.cache.ticker_values.get(ticker_symbol, None)
-        if price is None and ticker_symbol not in self.cache.non_existent_tickers:
+        price = self.cache.ticker_values.get(ticker_symbol, None) 
+        if price is None and ticker_symbol not in self.cache.non_existent_tickers: # ????
             self.cache.ticker_values = {
                 ticker["symbol"]: float(ticker["price"]) for ticker in self.binance_client.get_symbol_ticker()
             }
@@ -255,6 +261,20 @@ class BinanceAPIManager:
         """
         Buy altcoin
         """
+        def buying_timer():
+            global buy_timer,buying
+            buy_timer = 0
+            buying = True
+            print("Buy Transaction has started: Transaction Timer = 0sec")
+            while buying:
+                buy_timer +=1
+                time.sleep(1)
+
+                if not buy_timer//30:
+                    print(f'Transaction Timer = {buy_timer}')
+        
+        buyTimerThread = threading.Thread(target=buying_timer)
+                
         #import pdb;pdb.set_trace()
         trade_log = self.db.start_trade_log(origin_coin, target_coin, False)
         origin_symbol = origin_coin.symbol
@@ -285,22 +305,27 @@ class BinanceAPIManager:
                     symbol=origin_symbol + target_symbol,
                     quantity=order_quantity_s,
                     price=from_coin_price_s,
-                )
+                ) #sends buy order
                 self.logger.info(order)
             except BinanceAPIException as e:
                 self.logger.info(e)
                 time.sleep(1)
+                if e.code == -1013: #invalid qty, usually below min_order
+                    return order
             except Exception as e:  # pylint: disable=broad-except
                 self.logger.warning(f"Unexpected Error: {e}")
 
-        trade_log.set_ordered(origin_balance, target_balance, order_quantity)
+        buyTimerThread.start()
+        trade_log.set_ordered(origin_balance, target_balance, order_quantity) #logs bought order
 
-        order_guard.set_order(origin_symbol, target_symbol, int(order["orderId"]))
-        order = self.wait_for_order(order["orderId"], origin_symbol, target_symbol, order_guard)
+        order_guard.set_order(origin_symbol, target_symbol, int(order["orderId"])) #?
+        order = self.wait_for_order(order["orderId"], origin_symbol, target_symbol, order_guard) #checks if order fulfilled
 
         if order is None:
-            return None
-
+            buying = False #buying timer
+            return order
+        
+        buying = False #buying timer
         self.logger.info(f"Bought {origin_symbol}")
 
         trade_log.set_complete(order.cumulative_quote_qty)

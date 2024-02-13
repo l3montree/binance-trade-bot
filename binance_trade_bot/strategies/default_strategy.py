@@ -10,6 +10,7 @@ class Strategy(AutoTrader):
         super().initialize()
         self.initialize_current_coin()
 
+
     def scout(self):
         """
         Scout for potential jumps from the current coin to another coin
@@ -20,7 +21,7 @@ class Strategy(AutoTrader):
         print(
             f"{datetime.now()} - CONSOLE - INFO - SCOUTTING. "
             f"/Current coin: {current_coin + self.config.BRIDGE} ",
-            end="\r",
+            end="\n" #usually end ="\r" --> rewrites this print statement
         )
 
         current_coin_price = self.manager.get_ticker_price(current_coin + self.config.BRIDGE)
@@ -29,7 +30,7 @@ class Strategy(AutoTrader):
             self.logger.info(f"Skipping scouting... current coin {current_coin + self.config.BRIDGE} not found")
             return
 
-        self._jump_to_best_coin(current_coin, current_coin_price)
+        self._jump_to_best_coin(current_coin, current_coin_price) 
 
     def bridge_scout(self):
         current_coin = self.db.get_current_coin()
@@ -46,6 +47,18 @@ class Strategy(AutoTrader):
         """
         Decide what is the current coin, and set it up in the DB.
         """
+        if not self.initialised:
+            self.initialised = True
+            current_coin_symbol = self.config.CURRENT_COIN_SYMBOL
+            threshold = 1 #minimum balance required on coin
+
+            #checks if current_coin has a positive balance
+            if self.db.get_coin_value(current_coin_symbol)<threshold:
+                open_bal =self.manager.cache.open_balances() 
+                current_coin_symbol = max(open_bal, key = open_bal.get)
+        else:
+            current_coin = self.db.get_current_coin()
+        
         if self.db.get_current_coin() is None:
             current_coin_symbol = self.config.CURRENT_COIN_SYMBOL
             if not current_coin_symbol:

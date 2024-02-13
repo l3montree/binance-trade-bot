@@ -22,6 +22,7 @@ class AutoTrader:
         self.db = database
         self.logger = logger
         self.config = config
+        self.initialised = False #used to initialise current_coin since it pulls on trading.db
 
     def initialize(self):
         self.initialize_trade_thresholds()
@@ -36,7 +37,7 @@ class AutoTrader:
 
         if balance and balance * from_coin_price > self.manager.get_min_notional(
             pair.from_coin.symbol, self.config.BRIDGE.symbol
-        ):
+        ): #min notational value --> minimum amount/qty required in transaction
             can_sell = True
         else:
             self.logger.info("Skipping sell")
@@ -45,8 +46,8 @@ class AutoTrader:
             self.logger.info("Couldn't sell, going back to scouting mode...")
             return None
 
-        result = self.manager.buy_alt(pair.to_coin, self.config.BRIDGE)
-        if result is not None:
+        result = self.manager.buy_alt(pair.to_coin, self.config.BRIDGE) #buy coin!
+        if result is not None: #updates db
             self.db.set_current_coin(pair.to_coin)
             self.update_trade_threshold(pair.to_coin, result.price)
             return result
@@ -109,8 +110,8 @@ class AutoTrader:
         """
         ratio_dict: Dict[Pair, float] = {}
 
-        for pair in self.db.get_pairs_from(coin):
-            optional_coin_price = self.manager.get_ticker_price(pair.to_coin + self.config.BRIDGE)
+        for pair in self.db.get_pairs_from(coin): #returns all pairs taht are enabled
+            optional_coin_price = self.manager.get_ticker_price(pair.to_coin + self.config.BRIDGE) #finds price of potential coin based on USDT price
 
             if optional_coin_price is None:
                 self.logger.info(f"Skipping scouting... optional coin {pair.to_coin + self.config.BRIDGE} not found")
@@ -118,22 +119,28 @@ class AutoTrader:
 
             self.db.log_scout(pair, pair.ratio, coin_price, optional_coin_price)
 
+            """
+            coin price = from_coin / bridge coin
+            optional coint price = to_coin/bridge coint
+            coin_opt_coin_ratio  = from_coin/to_coin
+            """
+
             # Obtain (current coin)/(optional coin)
-            coin_opt_coin_ratio = coin_price / optional_coin_price
+            coin_opt_coin_ratio = coin_price / optional_coin_price #?
 
             # Fees
             from_fee = self.manager.get_fee(pair.from_coin, self.config.BRIDGE, True)
             to_fee = self.manager.get_fee(pair.to_coin, self.config.BRIDGE, False)
             transaction_fee = from_fee + to_fee - from_fee * to_fee
 
-            if self.config.USE_MARGIN == "yes":
+            if self.config.USE_MARGIN == "yes": #??
                 ratio_dict[pair] = (
                     (1 - transaction_fee) * coin_opt_coin_ratio / pair.ratio - 1 - self.config.SCOUT_MARGIN / 100
                 )
             else:
                 ratio_dict[pair] = (
                     coin_opt_coin_ratio - transaction_fee * self.config.SCOUT_MULTIPLIER * coin_opt_coin_ratio
-                ) - pair.ratio
+                ) - pair.ratio #scout multiplier?? accounts for worse case scenario --> price changes in the milliseconds
         return ratio_dict
 
     def _jump_to_best_coin(self, coin: Coin, coin_price: float):
@@ -143,7 +150,7 @@ class AutoTrader:
         ratio_dict = self._get_ratios(coin, coin_price)
 
         # keep only ratios bigger than zero
-        ratio_dict = {k: v for k, v in ratio_dict.items() if v > 0}
+        ratio_dict = {k: v for k, v in ratio_dict.items() if v > 0.09}
 
         # if we have any viable options, pick the one with the biggest ratio
         if ratio_dict:

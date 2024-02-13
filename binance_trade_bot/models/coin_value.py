@@ -15,7 +15,6 @@ class Interval(enum.Enum):
     DAILY = "DAILY"
     WEEKLY = "WEEKLY"
 
-
 class CoinValue(Base):
     __tablename__ = "coin_value"
 

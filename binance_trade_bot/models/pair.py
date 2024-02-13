@@ -4,7 +4,6 @@ from sqlalchemy.orm import column_property, relationship
 from .base import Base
 from .coin import Coin
 
-
 class Pair(Base):
     __tablename__ = "pairs"
 
@@ -17,13 +16,15 @@ class Pair(Base):
     to_coin_id = Column(String, ForeignKey("coins.symbol"))
     to_coin = relationship("Coin", foreign_keys=[to_coin_id], lazy="joined")
 
-    ratio = Column(Float) #creates a new column linked to ratio
+    ratio = Column(Float) #creates a new column of type float, unsure how it links the prices 
+
+    print(f'from pair: {ratio}')
 
     enabled = column_property(
         select([func.count(Coin.symbol)==2])
         .where(or_(Coin.symbol == from_coin_id, Coin.symbol == to_coin_id))
         .where(Coin.enabled.is_(True))
-        .as_scalar()
+        .as_scalar() #selects columns that are "enabled"
     )
 
     def __init__(self, from_coin: Coin, to_coin: Coin, ratio=None):
