@@ -9,6 +9,8 @@ from .database import Database
 from .logger import Logger
 from .models import Coin, CoinValue, Pair
 
+from .timer import Timer
+
 
 class AutoTrader:
     def __init__(
@@ -23,6 +25,7 @@ class AutoTrader:
         self.logger = logger
         self.config = config
         self.initialised = False #used to initialise current_coin since it pulls on trading.db
+        self.min_from_coin_value = config.MIN_FROM_COIN_VALUE
 
     def initialize(self):
         self.initialize_trade_thresholds()
@@ -143,20 +146,28 @@ class AutoTrader:
                 ) - pair.ratio #scout multiplier?? accounts for worse case scenario --> price changes in the milliseconds
         return ratio_dict
 
-    def _jump_to_best_coin(self, coin: Coin, coin_price: float):
+    def _get_next_best_coin():
+        #implement
+        pass
+
+    def _jump_to_best_coin(self, coin: Coin, coin_price: float) -> bool:
         """
         Given a coin, search for a coin to jump to
+            --> new coin will have >min_from_coin_value
         """
         ratio_dict = self._get_ratios(coin, coin_price)
 
         # keep only ratios bigger than zero
-        ratio_dict = {k: v for k, v in ratio_dict.items() if v > 0.09}
+        ratio_dict = {k: v for k, v in ratio_dict.items() if v > 0}
 
         # if we have any viable options, pick the one with the biggest ratio
         if ratio_dict:
             best_pair = max(ratio_dict, key=ratio_dict.get)
             self.logger.info(f"Will be jumping from {coin} to {best_pair.to_coin_id}")
             self.transaction_through_bridge(best_pair)
+            return True
+        else:
+            return False
 
     def bridge_scout(self):
         """
@@ -184,6 +195,8 @@ class AutoTrader:
         Log current value state of all altcoin balances against BTC and USDT in DB.
         """
         now = datetime.now()
+        timer = Timer("AUTOTRADER/update_values")
+        timer.start()
 
         session: Session
         with self.db.db_session() as session:
@@ -194,6 +207,8 @@ class AutoTrader:
                     continue
                 usd_value = self.manager.get_ticker_price(coin + "USDT")
                 btc_value = self.manager.get_ticker_price(coin + "BTC")
-                cv = CoinValue(coin, balance, usd_value, btc_value, datetime=now)
+                cv = CoinValue(coin, balance, usd_value, btc_value, datetime=now) #creates an instance of the coinvalue class
+                #coinvalues are updated, then using ORM all the other tables are updated as well
                 session.add(cv)
                 self.db.send_update(cv)
+        timer.end()

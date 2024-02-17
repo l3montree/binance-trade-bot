@@ -23,6 +23,7 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
             "strategy": "default",
             "sell_timeout": "0",
             "buy_timeout": "0",
+            "threshold":"0.09"
         }
 
         if not os.path.exists(CFG_FL_NAME):
@@ -75,3 +76,5 @@ class Config:  # pylint: disable=too-few-public-methods,too-many-instance-attrib
 
         self.USE_MARGIN = os.environ.get("USE_MARGIN") or config.get(USER_CFG_SECTION, "use_margin")
         self.SCOUT_MARGIN = float(os.environ.get("SCOUT_MARGIN") or config.get(USER_CFG_SECTION, "scout_margin"))
+        
+        self.MIN_FROM_COIN_VALUE =  float(os.environ.get("MIN_FROM_COIN_VALUE") or config.get(USER_CFG_SECTION, "min_from_coin_value"))

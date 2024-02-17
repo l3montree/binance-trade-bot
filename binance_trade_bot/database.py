@@ -14,6 +14,7 @@ from .config import Config
 from .logger import Logger
 from .models import *  # pylint: disable=wildcard-import
 
+from .timer import Timer
 
 class Database:
     def __init__(self, logger: Logger, config: Config, uri="sqlite:///data/crypto_trading.db"):
@@ -51,6 +52,8 @@ class Database:
         with self.db_session() as session:
             coinValueList = session.query(CoinValue.balance).filter(CoinValue.coin_id == symbol).order_by(CoinValue.datetime.desc()).first()
             return float(coinValueList[0])
+        
+                    
 
     def set_coins(self, symbols: List[str]):
         """
@@ -128,7 +131,7 @@ class Database:
             if current_coin is None:
                 return None
             coin = current_coin.coin
-            session.expunge(coin) #removes coin from the session cache, to add = session.add(coin)
+            session.expunge(coin) #removes coin from the session cache, to add = session.add(coin), will happen at next flush
             return coin
 
     def get_pair(self, from_coin: Union[Coin, str], to_coin: Union[Coin, str]):
@@ -176,12 +179,22 @@ class Database:
             self.send_update(sh)
 
     def prune_scout_history(self):
+        timer = Timer("DATABASE/prune_scout_history")
+        timer.start()
+
         time_diff = datetime.now() - timedelta(hours=self.config.SCOUT_HISTORY_PRUNE_TIME)
         session: Session
         with self.db_session() as session:
             session.query(ScoutHistory).filter(ScoutHistory.datetime < time_diff).delete()
 
+        timer.end()
+
     def prune_value_history(self):
+
+        timer = Timer("DATABASE/prune_value_history")
+        timer.start()
+
+
         session: Session
         with self.db_session() as session:
             # Sets the first entry for each coin for each hour as 'hourly'
@@ -226,6 +239,8 @@ class Database:
             ).delete()
 
             # All weekly entries will be kept forever
+        
+        timer.end()
 
     def create_database(self):
         inspector = inspect(self.engine)

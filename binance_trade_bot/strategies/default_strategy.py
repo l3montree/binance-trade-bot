@@ -4,6 +4,7 @@ from datetime import datetime
 
 from binance_trade_bot.auto_trader import AutoTrader
 
+from binance_trade_bot.timer import Timer
 
 class Strategy(AutoTrader):
     def initialize(self):
@@ -15,6 +16,9 @@ class Strategy(AutoTrader):
         """
         Scout for potential jumps from the current coin to another coin
         """
+        scout_timer  = Timer("Default: scout")
+        scout_timer.start()
+
         current_coin = self.db.get_current_coin()
         # Display on the console, the current coin+Bridge, so users can see *some* activity and not think the bot has
         # stopped. Not logging though to reduce log size.
@@ -30,7 +34,13 @@ class Strategy(AutoTrader):
             self.logger.info(f"Skipping scouting... current coin {current_coin + self.config.BRIDGE} not found")
             return
 
-        self._jump_to_best_coin(current_coin, current_coin_price) 
+        move_to_next_coin = self._jump_to_best_coin(current_coin, current_coin_price) 
+        if not move_to_next_coin:
+            print(f'SCOUT: Cannot find positive ratios, re-scouting')
+        else:
+            print(f'SCOUT: Positive Ratios found')
+            
+        scout_timer.end()
 
     def bridge_scout(self):
         current_coin = self.db.get_current_coin()
@@ -50,14 +60,6 @@ class Strategy(AutoTrader):
         if not self.initialised:
             self.initialised = True
             current_coin_symbol = self.config.CURRENT_COIN_SYMBOL
-            threshold = 1 #minimum balance required on coin
-
-            #checks if current_coin has a positive balance
-            if self.db.get_coin_value(current_coin_symbol)<threshold:
-                open_bal =self.manager.cache.open_balances() 
-                current_coin_symbol = max(open_bal, key = open_bal.get)
-        else:
-            current_coin = self.db.get_current_coin()
         
         if self.db.get_current_coin() is None:
             current_coin_symbol = self.config.CURRENT_COIN_SYMBOL
