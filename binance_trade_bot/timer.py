@@ -10,7 +10,6 @@ class Timer:
         self.time_reports = 30 #sec
         self.time_increments = 1
         self.activity_str = activity
-        self.logger = Logger()
 
     def _timer_func(self):
         while not self.stop_timer_event:
@@ -20,16 +19,15 @@ class Timer:
             if (self.timer_seconds/self.time_reports).is_integer():
                 message = f"{self.activity_str}: Timer = {self.timer_seconds} sec"
                 print(message)
-                self.logger.log(message)
+                
             
-
     def start(self):
         self.thread = threading.Thread(target = self._timer_func)
         self.thread.start()
 
         message = f'STARTS:{self.activity_str}'
         print(message)
-        self.logger.log(message)
+        
     
     def end(self):
         self.stop_timer_event = True
@@ -37,8 +35,7 @@ class Timer:
             self.thread.join()
         
         message = f"ENDS:{self.activity_str}, TIME TAKEN = {self.timer_seconds} sec"
-        print(message)
-        self.logger.log(message)   
+        print(message)  
 
 
 

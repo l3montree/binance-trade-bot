@@ -69,6 +69,7 @@ class CoinValue(Base):
 
     def info(self):
         return {
+            "coin":self.coin,
             "balance": self.balance,
             "usd_value": self.usd_value,
             "btc_value": self.btc_value,

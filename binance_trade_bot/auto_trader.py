@@ -197,13 +197,13 @@ class AutoTrader:
         now = datetime.now()
         timer = Timer("AUTOTRADER/update_values")
         timer.start()
-
+        print(f'update_values')
         session: Session
         with self.db.db_session() as session:
             coins: List[Coin] = session.query(Coin).all()
             for coin in coins:
-                balance = self.manager.get_currency_balance(coin.symbol)
-                if balance == 0:
+                balance = self.manager.get_currency_balance(coin.symbol) #amount of crypto, eg 1 BTC
+                if balance == 0: 
                     continue
                 usd_value = self.manager.get_ticker_price(coin + "USDT")
                 btc_value = self.manager.get_ticker_price(coin + "BTC")
@@ -211,4 +211,7 @@ class AutoTrader:
                 #coinvalues are updated, then using ORM all the other tables are updated as well
                 session.add(cv)
                 self.db.send_update(cv)
+
+            for i in session.query(CoinValue).all():print(i.info())
+
         timer.end()
